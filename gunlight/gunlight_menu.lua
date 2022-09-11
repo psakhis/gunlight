@@ -156,7 +156,7 @@ local function populate_configure_menu(menu)
 	if not (configure_menu_active or configure_selection_save) then
 		configure_selection_save = #menu
 	end
-	table.insert(menu, {_p('plugin-gunlight', 'Hotkey'), key_name, hotkey_poller and 'lr' or ''})
+	table.insert(menu, {_p('plugin-gunlight', 'Gun button'), key_name, hotkey_poller and 'lr' or ''})
 	table.insert(menu, {_p('plugin-gunlight', 'Brightness gain'), current_button.brightness_gain, current_button.brightness_gain > 0 and 'lr' or 'r'})
 	table.insert(menu, {_p('plugin-gunlight', 'Brightness frames'), current_button.off_frames, current_button.off_frames > 1 and 'lr' or 'r'})
 	configure_menu_active = true
