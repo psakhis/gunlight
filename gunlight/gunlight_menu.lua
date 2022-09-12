@@ -56,6 +56,8 @@ end
 local function create_new_button()
 	return {
 		brightness_gain = 0.5,
+		contrast_gain = 0.5,
+		gamma_gain = 0.5,		
 		off_frames = 1,
 		counter = 0
 	}
@@ -158,7 +160,9 @@ local function populate_configure_menu(menu)
 	end
 	table.insert(menu, {_p('plugin-gunlight', 'Gun button'), key_name, hotkey_poller and 'lr' or ''})
 	table.insert(menu, {_p('plugin-gunlight', 'Brightness gain'), current_button.brightness_gain, current_button.brightness_gain > 0 and 'lr' or 'r'})
-	table.insert(menu, {_p('plugin-gunlight', 'Brightness frames'), current_button.off_frames, current_button.off_frames > 1 and 'lr' or 'r'})
+	table.insert(menu, {_p('plugin-gunlight', 'Contrast gain'), current_button.contrast_gain, current_button.contrast_gain > 0 and 'lr' or 'r'})
+	table.insert(menu, {_p('plugin-gunlight', 'Gamma gain'), current_button.gamma_gain, current_button.gamma_gain > 0 and 'lr' or 'r'})
+	table.insert(menu, {_p('plugin-gunlight', 'Frames to apply gain'), current_button.off_frames, current_button.off_frames > 1 and 'lr' or 'r'})
 	configure_menu_active = true
 end
 
@@ -197,7 +201,7 @@ local function handle_configure_menu(index, event)
 		end
 	elseif index == 3 then
 		-- Brightness gain
-		manager.machine:popmessage(_p('plugin-gunlight', 'Brightness gain for gunt button'))
+		manager.machine:popmessage(_p('plugin-gunlight', 'Brightness gain for gun button'))
 		if event == 'left' then
 			current_button.brightness_gain = current_button.brightness_gain - 0.1
 			if current_button.brightness_gain < 0.01 then
@@ -215,8 +219,46 @@ local function handle_configure_menu(index, event)
 			return true
 		end
 	elseif index == 4 then
+		-- Contrast gain
+		manager.machine:popmessage(_p('plugin-gunlight', 'Contrast gain for gun button'))
+		if event == 'left' then
+			current_button.contrast_gain = current_button.contrast_gain - 0.1
+			if current_button.contrast_gain < 0.01 then
+			 current_button.contrast_gain = 0
+			end 
+			return true
+		elseif event == 'right' then
+			current_button.contrast_gain = current_button.contrast_gain + 0.1
+			if current_button.contrast_gain > 1 then
+			 current_button.contrast_gain = 1
+			end 
+			return true
+		elseif event == 'clear' then
+			current_button.contrast_gain = 0.5
+			return true
+		end	
+	elseif index == 5 then
+		-- Gamma gain
+		manager.machine:popmessage(_p('plugin-gunlight', 'Gamma gain for gun button'))
+		if event == 'left' then
+			current_button.gamma_gain = current_button.gamma_gain - 0.1
+			if current_button.gamma_gain < 0.01 then
+			 current_button.gamma_gain = 0
+			end 
+			return true
+		elseif event == 'right' then
+			current_button.gamma_gain = current_button.gamma_gain + 0.1
+			if current_button.gamma_gain > 2 then
+			 current_button.gamma_gain = 2
+			end 
+			return true
+		elseif event == 'clear' then
+			current_button.gamma_gain = 0.5
+			return true
+		end		
+	elseif index == 6 then
 		-- Off frames
-		manager.machine:popmessage(_p('plugin-gunlight', 'Frames to apply brightness gain'))
+		manager.machine:popmessage(_p('plugin-gunlight', 'Frames to apply gain'))
 		if event == 'left' then
 			current_button.off_frames = current_button.off_frames - 1
 			return true

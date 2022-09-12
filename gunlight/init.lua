@@ -22,7 +22,9 @@ function gunlight.startplugin()
 	--   'key' - input_seq of the keybinding
 	--   'key_cfg' - configuration string for the keybinding
 	--   'brightness_gain' - increase brightness for gun button
-	--   'off_frames' - brightness frames
+	--   'contrast_gain' - increase contrast for gun button
+	--   'gamma_gain' - increase gamma for gun button
+	--   'off_frames' - frames to apply gain
 	--   'button' - reference to ioport_field
 	--   'counter' - position in gunlight cycle
 	local buttons = {}
@@ -33,6 +35,8 @@ function gunlight.startplugin()
 		local input = manager.machine.input
 		local gunlight_user_set = manager.machine.screens[":screen"].container.user_settings	
 		local gunlight_brightness_gain = 0.0
+		local gunlight_contrast_gain = 0.0
+		local gunlight_gamma_gain = 0.0
 		local gunlight_frames = 1
 		num_frames = num_frames + 1
                 --local COLOR_WHITE = 0xffffffff
@@ -42,12 +46,18 @@ function gunlight.startplugin()
 			if pressed then					         								
 				button.counter = button.counter + 1	
 				gunlight_brightness_gain = button.brightness_gain
+				gunlight_contrast_gain = button.contrast_gain
+				gunlight_gamma_gain = button.gamma_gain
 				num_frames = 0								
 				return 1
 			else	
-			        if num_frames < button.off_frames and init_user_set.brightness < gunlight_user_set.brightness then			              
+			        if num_frames < button.off_frames and (init_user_set.brightness < gunlight_user_set.brightness or 
+			                                               init_user_set.contrast < gunlight_user_set.contrast or
+			                                               init_user_set.gamma < gunlight_user_set.gamma) then			              
 			        	gunlight_frames	= 1
 			        	gunlight_brightness_gain = button.brightness_gain
+			        	gunlight_contrast_gain = button.contrast_gain
+				        gunlight_gamma_gain = button.gamma_gain
 			        else
 			        	gunlight_frames = 0
 			        	num_frames = 0
@@ -71,10 +81,14 @@ function gunlight.startplugin()
 		end
 		for i, state in pairs(button_states) do		        	        		       
 		        if state[1] == 1 or gunlight_frames == 1 then		           			           
-		           gunlight_user_set.brightness = gunlight_brightness_gain + init_user_set.brightness			          		          	           		           		           
+		           gunlight_user_set.brightness = gunlight_brightness_gain + init_user_set.brightness
+		           gunlight_user_set.contrast = gunlight_contrast_gain + init_user_set.contrast
+		           gunlight_user_set.gamma = gunlight_gamma_gain + init_user_set.gamma
 		         --manager.machine.screens[":screen"]:draw_box(0, 0,  manager.machine.screens[":screen"].width, manager.machine.screens[":screen"].height, COLOR_WHITE,COLOR_WHITE)			                  		         	                		           		          		       	 		          
 		        else
 		           gunlight_user_set.brightness = init_user_set.brightness
+		           gunlight_user_set.contrast = init_user_set.contrast
+		           gunlight_user_set.gamma = init_user_set.gamma
 		        end		       
 		        manager.machine.screens[":screen"].container.user_settings = gunlight_user_set		        
 			state[2]:set_value(state[1])						

@@ -18,6 +18,8 @@ local function initialize_button(settings)
 			key = manager.machine.input:seq_from_tokens(settings.key),
 			key_cfg = settings.key,
 			brightness_gain = settings.brightness_gain,
+			contrast_gain = settings.contrast_gain,
+			gamma_gain = settings.gamma_gain,
 			off_frames = settings.off_frames,
 			counter = 0
 		}		
@@ -42,6 +44,8 @@ local function serialize_settings(button_list)
 			type = manager.machine.ioport:input_type_to_token(button.type),
 			key = button.key_cfg,
 			brightness_gain = button.brightness_gain,
+			contrast_gain = button.contrast_gain,
+			gamma_gain = button.gamma_gain,
 			off_frames = button.off_frames
 		}
 		table.insert(settings, setting)
