@@ -9,9 +9,14 @@ local exports = {
 
 local gunlight = exports
 
-local init_user_set = nil
-local gunlight_user_set = nil
-local num_frames = 0
+local user_set_brightness = nil
+local user_set_contrast = nil
+local user_set_gamma = nil
+local gain_set_brightness = 0.0
+local gain_set_contrast = 0.0
+local gain_set_gamma = 0.0
+local num_frames_gain = 0
+local gain_applied = false
 
 function gunlight.startplugin()
 
@@ -30,46 +35,67 @@ function gunlight.startplugin()
 	local buttons = {}
 
 	local menu_handler
+        
+        local function save_user_settings()
+        	local user_set = manager.machine.screens[":screen"].container.user_settings
+		user_set_brightness = user_set.brightness 
+	        user_set_contrast = user_set.contrast
+	        user_set_gamma = user_set.gamma
+        end
+        
+        local function restore_user_settings()
+         	--local COLOR_WHITE = 0xffffffff
+		--manager.machine.screens[":screen"]:draw_box(0, 0,  manager.machine.screens[":screen"].width, manager.machine.screens[":screen"].height, COLOR_WHITE,COLOR_WHITE)
+        	if gain_applied then
+	        	local user_set = manager.machine.screens[":screen"].container.user_settings
+	        	user_set.brightness = user_set_brightness 
+	        	user_set.contrast = user_set_contrast 
+	        	user_set.gamma = user_set_gamma
+	               	manager.machine.screens[":screen"].container.user_settings = user_set
+	               	gain_applied = false
+	               	gain_set_brightness = 0.0
+	        	gain_set_contrast = 0.0
+	        	gain_set_gamma = 0.0	        	
+	        end	
+        end
+        
+        local function restore_gain_settings()
+        	local user_set = manager.machine.screens[":screen"].container.user_settings
+		user_set.brightness = user_set_brightness + gain_set_brightness 
+	        user_set.contrast = user_set_contrast + gain_set_contrast
+	        user_set.gamma = user_set_gamma + gain_set_gamma
+	        manager.machine.screens[":screen"].container.user_settings = user_set
+	        gain_applied = true		                       	      
+        end
                
 	local function process_frame()
-		local input = manager.machine.input
-		local gunlight_user_set = manager.machine.screens[":screen"].container.user_settings	
-		local gunlight_brightness_gain = 0.0
-		local gunlight_contrast_gain = 0.0
-		local gunlight_gamma_gain = 0.0
-		local gunlight_frames = 1
-		num_frames = num_frames + 1
-                --local COLOR_WHITE = 0xffffffff
-
+		local input = manager.machine.input						
+					
 		local function process_button(button)
 			local pressed = input:seq_pressed(button.key)			
 			if pressed then					         								
 				button.counter = button.counter + 1	
-				gunlight_brightness_gain = button.brightness_gain
-				gunlight_contrast_gain = button.contrast_gain
-				gunlight_gamma_gain = button.gamma_gain
-				num_frames = 0								
+				if button.off_frames > num_frames_gain then
+					num_frames_gain = button.off_frames
+				end
+				if  button.brightness_gain > gain_set_brightness then
+					gain_set_brightness = button.brightness_gain
+				end									
+				if  button.contrast_gain > gain_set_contrast then
+					gain_set_contrast = button.contrast_gain
+				end									
+				if  button.gamma_gain > gain_set_gamma then
+					gain_set_gamma = button.gamma_gain
+				end									
 				return 1
-			else	
-			        if num_frames < button.off_frames and (init_user_set.brightness < gunlight_user_set.brightness or 
-			                                               init_user_set.contrast < gunlight_user_set.contrast or
-			                                               init_user_set.gamma < gunlight_user_set.gamma) then			              
-			        	gunlight_frames	= 1
-			        	gunlight_brightness_gain = button.brightness_gain
-			        	gunlight_contrast_gain = button.contrast_gain
-				        gunlight_gamma_gain = button.gamma_gain
-			        else
-			        	gunlight_frames = 0
-			        	num_frames = 0
-			        end		
+			else						
 				button.counter = 0							
 				return 0
 			end
 		end
-                                
-                
+                                                
 		-- Resolves conflicts between multiple gunlight keybindings for the same button.
-		local button_states = {}                              	
+		local button_states = {}    		                          	
                		
 		for i, button in ipairs(buttons) do
 			if button.button then
@@ -79,24 +105,27 @@ function gunlight.startplugin()
 				button_states[key] = state						
 			end
 		end
-		for i, state in pairs(button_states) do		        	        		       
-		        if state[1] == 1 or gunlight_frames == 1 then		           			           
-		           gunlight_user_set.brightness = gunlight_brightness_gain + init_user_set.brightness
-		           gunlight_user_set.contrast = gunlight_contrast_gain + init_user_set.contrast
-		           gunlight_user_set.gamma = gunlight_gamma_gain + init_user_set.gamma
-		         --manager.machine.screens[":screen"]:draw_box(0, 0,  manager.machine.screens[":screen"].width, manager.machine.screens[":screen"].height, COLOR_WHITE,COLOR_WHITE)			                  		         	                		           		          		       	 		          
-		        else
-		           gunlight_user_set.brightness = init_user_set.brightness
-		           gunlight_user_set.contrast = init_user_set.contrast
-		           gunlight_user_set.gamma = init_user_set.gamma
-		        end		       
-		        manager.machine.screens[":screen"].container.user_settings = gunlight_user_set		        
+		
+		if num_frames_gain == 0 then
+			if gain_applied then
+				restore_user_settings()
+			end
+		else				
+			if not gain_applied then
+				save_user_settings()
+				restore_gain_settings()			
+			end	
+			num_frames_gain = num_frames_gain - 1
+		end								
+				
+		for i, state in pairs(button_states) do		        	        		       		       	           			           	        
 			state[2]:set_value(state[1])						
-		end
+		end					
+								
 	end
 
 	local function load_settings()	
-	        init_user_set = manager.machine.screens[":screen"].container.user_settings	        
+	        save_user_settings()
 		local loader = require('gunlight/gunlight_save')
 		if loader then
 			buttons = loader:load_settings()
@@ -104,7 +133,7 @@ function gunlight.startplugin()
 	end
 
 	local function save_settings()
-	        manager.machine.screens[":screen"].container.user_settings = init_user_set
+		restore_user_settings()	        
 		local saver = require('gunlight/gunlight_save')
 		if saver then
 			saver:save_settings(buttons)
