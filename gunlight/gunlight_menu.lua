@@ -59,6 +59,7 @@ local function create_new_button()
 		contrast_gain = 0.5,
 		gamma_gain = 0.5,		
 		off_frames = 1,
+		method = "last",
 		counter = 0
 	}
 end
@@ -163,6 +164,13 @@ local function populate_configure_menu(menu)
 	table.insert(menu, {_p('plugin-gunlight', 'Contrast gain'), current_button.contrast_gain, current_button.contrast_gain > 0 and 'lr' or 'r'})
 	table.insert(menu, {_p('plugin-gunlight', 'Gamma gain'), current_button.gamma_gain, current_button.gamma_gain > 0 and 'lr' or 'r'})
 	table.insert(menu, {_p('plugin-gunlight', 'Frames to apply gain'), current_button.off_frames, current_button.off_frames > 1 and 'lr' or 'r'})
+	
+	if current_button.method == "last" then	         
+	        table.insert(menu, {_p('plugin-gunlight', 'Gain method'), "Until release",  'lr' or 'r'})
+	else
+	        table.insert(menu, {_p('plugin-gunlight', 'Gain method'), "Fixed frames", 'lr' or 'r'})
+	end
+	
 	configure_menu_active = true
 end
 
@@ -269,6 +277,19 @@ local function handle_configure_menu(index, event)
 			current_button.off_frames = 1
 			return true
 		end
+	elseif index == 7 then
+		-- Method
+		manager.machine:popmessage(_p('plugin-gunlight', 'Gain apply method'))
+		if event == 'left' then
+			current_button.method = "last"
+			return true
+		elseif event == 'right' then
+			current_button.method = "first"
+			return true
+		elseif event == 'clear' then
+			current_button.method = "first"
+			return true
+		end	
 	end
 	return false
 end

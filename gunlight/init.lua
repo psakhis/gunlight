@@ -17,6 +17,8 @@ local gain_set_contrast = 0.0
 local gain_set_gamma = 0.0
 local num_frames_gain = 0
 local gain_applied = false
+local button_cycle = false
+local buttons_counter = 0
 
 function gunlight.startplugin()
 
@@ -30,6 +32,7 @@ function gunlight.startplugin()
 	--   'contrast_gain' - increase contrast for gun button
 	--   'gamma_gain' - increase gamma for gun button
 	--   'off_frames' - frames to apply gain
+	--   'method' - until release or fixed frames gain
 	--   'button' - reference to ioport_field
 	--   'counter' - position in gunlight cycle
 	local buttons = {}
@@ -55,7 +58,7 @@ function gunlight.startplugin()
 	               	gain_applied = false
 	               	gain_set_brightness = 0.0
 	        	gain_set_contrast = 0.0
-	        	gain_set_gamma = 0.0	        	
+	        	gain_set_gamma = 0.0		        		        	        	
 	        end	
         end
         
@@ -73,11 +76,19 @@ function gunlight.startplugin()
 					
 		local function process_button(button)
 			local pressed = input:seq_pressed(button.key)			
-			if pressed then					         								
-				button.counter = button.counter + 1	
-				if button.off_frames > num_frames_gain then
-					num_frames_gain = button.off_frames
+			if pressed then									
+				button.counter = button.counter + 1
+				buttons_counter = buttons_counter + 1									
+				if button.method == "last" then
+					if button.off_frames > num_frames_gain then
+						num_frames_gain = button.off_frames
+					end
 				end
+				if button.method == "first" then
+					if not button_cycle and not gain_applied then
+						num_frames_gain = button.off_frames
+					end
+				end																				   				
 				if  button.brightness_gain > gain_set_brightness then
 					gain_set_brightness = button.brightness_gain
 				end									
@@ -89,7 +100,7 @@ function gunlight.startplugin()
 				end									
 				return 1
 			else						
-				button.counter = 0							
+				button.counter = 0											
 				return 0
 			end
 		end
@@ -105,6 +116,17 @@ function gunlight.startplugin()
 				button_states[key] = state						
 			end
 		end
+		
+		if button_cycle then
+			if buttons_counter == 0 then
+				button_cycle = false
+			end	
+		else 
+			if buttons_counter > 0 then
+				button_cycle = true
+			end
+		end		
+		buttons_counter = 0			 			 								
 		
 		if num_frames_gain == 0 then
 			if gain_applied then
