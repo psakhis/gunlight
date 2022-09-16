@@ -17,8 +17,6 @@ local gain_set_contrast = 0.0
 local gain_set_gamma = 0.0
 local num_frames_gain = 0
 local gain_applied = false
-local button_cycle = false
-local buttons_counter = 0
 
 function gunlight.startplugin()
 
@@ -43,12 +41,13 @@ function gunlight.startplugin()
         	local user_set = manager.machine.screens[":screen"].container.user_settings
 		user_set_brightness = user_set.brightness 
 	        user_set_contrast = user_set.contrast
-	        user_set_gamma = user_set.gamma
+	        user_set_gamma = user_set.gamma	        	        
         end
         
         local function restore_user_settings()
          	--local COLOR_WHITE = 0xffffffff
 		--manager.machine.screens[":screen"]:draw_box(0, 0,  manager.machine.screens[":screen"].width, manager.machine.screens[":screen"].height, COLOR_WHITE,COLOR_WHITE)
+		
         	if gain_applied then
 	        	local user_set = manager.machine.screens[":screen"].container.user_settings
 	        	user_set.brightness = user_set_brightness 
@@ -77,15 +76,14 @@ function gunlight.startplugin()
 		local function process_button(button)
 			local pressed = input:seq_pressed(button.key)			
 			if pressed then									
-				button.counter = button.counter + 1
-				buttons_counter = buttons_counter + 1									
+				button.counter = button.counter + 1																	
 				if button.method == "last" then
 					if button.off_frames > num_frames_gain then
 						num_frames_gain = button.off_frames
 					end
-				end
-				if button.method == "first" then
-					if not button_cycle and not gain_applied then
+				end				
+				if button.method == "first" then					
+					if button.counter == 1 and not gain_applied then
 						num_frames_gain = button.off_frames
 					end
 				end																				   				
@@ -106,27 +104,16 @@ function gunlight.startplugin()
 		end
                                                 
 		-- Resolves conflicts between multiple gunlight keybindings for the same button.
-		local button_states = {}    		                          	
+		local button_states = {} 		  		                          	
                		
 		for i, button in ipairs(buttons) do
 			if button.button then
 				local key = button.port .. '\0' .. button.mask .. '.' .. button.type				
 				local state = button_states[key] or {0, button.button}
 				state[1] = process_button(button) | state[1]				
-				button_states[key] = state						
+				button_states[key] = state										
 			end
-		end
-		
-		if button_cycle then
-			if buttons_counter == 0 then
-				button_cycle = false
-			end	
-		else 
-			if buttons_counter > 0 then
-				button_cycle = true
-			end
-		end		
-		buttons_counter = 0			 			 								
+		end						 			 								
 		
 		if num_frames_gain == 0 then
 			if gain_applied then
@@ -155,7 +142,7 @@ function gunlight.startplugin()
 	end
 
 	local function save_settings()
-		restore_user_settings()	        
+		restore_user_settings()	 		
 		local saver = require('gunlight/gunlight_save')
 		if saver then
 			saver:save_settings(buttons)
