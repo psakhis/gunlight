@@ -17,6 +17,8 @@ local gain_set_contrast = 0.0
 local gain_set_gamma = 0.0
 local num_frames_gain = 0
 local gain_applied = false
+local lag_stack = {}
+local lag_key = {}
 
 function gunlight.startplugin()
 
@@ -31,6 +33,7 @@ function gunlight.startplugin()
 	--   'gamma_gain' - increase gamma for gun button
 	--   'off_frames' - frames to apply gain
 	--   'method' - until release or fixed frames gain
+	--   'lag' - frames to apply button
 	--   'button' - reference to ioport_field
 	--   'counter' - position in gunlight cycle
 	local buttons = {}
@@ -95,8 +98,16 @@ function gunlight.startplugin()
 				end									
 				if  button.gamma_gain > gain_set_gamma then
 					gain_set_gamma = button.gamma_gain
-				end									
-				return 1
+				end	
+				
+				-- Frames to apply button
+				if button.lag > 0 then
+				        table.insert(lag_stack,button.lag)
+				        table.insert(lag_key,button.port .. '\0' .. button.mask .. '.' .. button.type)
+				        return 0
+				else        
+				        return 1
+				end        
 			else						
 				button.counter = 0											
 				return 0
@@ -108,12 +119,28 @@ function gunlight.startplugin()
                		
 		for i, button in ipairs(buttons) do
 			if button.button then
-				local key = button.port .. '\0' .. button.mask .. '.' .. button.type				
+				local key = button.port .. '\0' .. button.mask .. '.' .. button.type									
 				local state = button_states[key] or {0, button.button}
-				state[1] = process_button(button) | state[1]				
+				state[1] = process_button(button) | state[1]					
 				button_states[key] = state										
 			end
 		end						 			 								
+		
+		-- Resolves lag button		
+		for k,v in ipairs(lag_stack) do
+		        -- emu.print_verbose("k " .. k)			
+                        -- emu.print_verbose("v " .. lag_stack[k])	
+		        lag_stack[k] = v - 1		        
+		        if lag_stack[k] <= 0 then                                                                
+                                local key = lag_key[k]
+                                local state = button_states[key]
+                                state[1] = 1             
+                                button_states[key] = state
+                                table.remove(lag_stack,k) 
+                                table.remove(lag_key,k) 
+                        end        
+		end
+		
 		
 		if num_frames_gain == 0 then
 			if gain_applied then
@@ -126,9 +153,11 @@ function gunlight.startplugin()
 			end	
 			num_frames_gain = num_frames_gain - 1
 		end								
+		
+		
 				
 		for i, state in pairs(button_states) do		        	        		       		       	           			           	        
-			state[2]:set_value(state[1])						
+			state[2]:set_value(state[1])					
 		end					
 								
 	end

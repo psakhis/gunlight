@@ -60,6 +60,7 @@ local function create_new_button()
 		gamma_gain = 0.5,		
 		off_frames = 1,
 		method = "last",
+		lag = 0,
 		counter = 0
 	}
 end
@@ -170,6 +171,8 @@ local function populate_configure_menu(menu)
 	else
 	        table.insert(menu, {_p('plugin-gunlight', 'Gain method'), "Fixed frames", 'lr' or 'r'})
 	end
+	
+	table.insert(menu, {_p('plugin-gunlight', 'Frames to apply button'), current_button.lag, current_button.lag >= 0 and 'lr' or 'r'})
 	
 	configure_menu_active = true
 end
@@ -288,6 +291,22 @@ local function handle_configure_menu(index, event)
 			return true
 		elseif event == 'clear' then
 			current_button.method = "first"
+			return true
+		end	
+	elseif index == 8 then
+		-- Lag frames
+		manager.machine:popmessage(_p('plugin-gunlight', 'Frames to apply button'))
+		if event == 'left' then
+			current_button.lag = current_button.lag - 1
+			if current_button.lag < 0 then
+			 current_button.lag = 0
+			end 
+			return true
+		elseif event == 'right' then
+			current_button.lag = current_button.lag + 1
+			return true
+		elseif event == 'clear' then
+			current_button.off_frames = 0
 			return true
 		end	
 	end
