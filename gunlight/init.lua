@@ -103,12 +103,12 @@ function gunlight.startplugin()
 				-- Frames to apply button
 				if button.lag > 0 then
 				        table.insert(lag_stack,button.lag)
-				        table.insert(lag_key,button.port .. '\0' .. button.mask .. '.' .. button.type)
+				        table.insert(lag_key,button.port .. '\0' .. button.mask .. '.' .. button.type)				        
 				        return 0
-				else        
+				else      				        
 				        return 1
 				end        
-			else						
+			else						        
 				button.counter = 0											
 				return 0
 			end
@@ -118,29 +118,32 @@ function gunlight.startplugin()
 		local button_states = {} 		  		                          	
                		
 		for i, button in ipairs(buttons) do
-			if button.button then
+			if button.button then			        
 				local key = button.port .. '\0' .. button.mask .. '.' .. button.type									
 				local state = button_states[key] or {0, button.button}
-				state[1] = process_button(button) | state[1]					
+				state[1] = process_button(button) | state[1]									
 				button_states[key] = state										
 			end
 		end						 			 								
-		
-		-- Resolves lag button		
-		for k,v in ipairs(lag_stack) do
-		        -- emu.print_verbose("k " .. k)			
-                        -- emu.print_verbose("v " .. lag_stack[k])	
-		        lag_stack[k] = v - 1		        
-		        if lag_stack[k] <= 0 then                                                                
-                                local key = lag_key[k]
-                                local state = button_states[key]
-                                state[1] = 1             
-                                button_states[key] = state
-                                table.remove(lag_stack,k) 
-                                table.remove(lag_key,k) 
-                        end        
+			
+		local i = 1					
+		while i <= table.maxn(lag_stack) do		
+		        --emu.print_verbose("ELEMENT " .. lag_stack[i])
+		        lag_stack[i] = lag_stack[i] - 1
+		        --emu.print_verbose("NEW ELEMENT " .. lag_stack[i])
+		        if lag_stack[i] <= 0 then
+		                local key = lag_key[i] 
+		                local state = button_states[key]
+		                state[1] = 1
+		                button_states[key] = state
+		                table.remove(lag_stack,i)
+		                table.remove(lag_key,i)
+		                --emu.print_verbose("removed " .. i)
+		        else
+		                i = i + 1        
+		        end
 		end
-		
+						
 		
 		if num_frames_gain == 0 then
 			if gain_applied then
