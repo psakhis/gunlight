@@ -9,6 +9,7 @@ local exports = {
 
 local gunlight = exports
 
+local machine_screen = nil
 local user_set_brightness = nil
 local user_set_contrast = nil
 local user_set_gamma = nil
@@ -41,7 +42,7 @@ function gunlight.startplugin()
 	local menu_handler
         
         local function save_user_settings()
-        	local user_set = manager.machine.screens[":screen"].container.user_settings
+                local user_set = manager.machine.screens[machine_screen].container.user_settings                    	        	
 		user_set_brightness = user_set.brightness 
 	        user_set_contrast = user_set.contrast
 	        user_set_gamma = user_set.gamma	        	        
@@ -51,12 +52,12 @@ function gunlight.startplugin()
          	--local COLOR_WHITE = 0xffffffff
 		--manager.machine.screens[":screen"]:draw_box(0, 0,  manager.machine.screens[":screen"].width, manager.machine.screens[":screen"].height, COLOR_WHITE,COLOR_WHITE)
 		
-        	if gain_applied then
-	        	local user_set = manager.machine.screens[":screen"].container.user_settings
+        	if gain_applied then         	
+	        	local user_set = manager.machine.screens[machine_screen].container.user_settings	        	
 	        	user_set.brightness = user_set_brightness 
 	        	user_set.contrast = user_set_contrast 
 	        	user_set.gamma = user_set_gamma
-	               	manager.machine.screens[":screen"].container.user_settings = user_set
+	               	manager.machine.screens[machine_screen].container.user_settings = user_set
 	               	gain_applied = false
 	               	gain_set_brightness = 0.0
 	        	gain_set_contrast = 0.0
@@ -65,11 +66,11 @@ function gunlight.startplugin()
         end
         
         local function restore_gain_settings()
-        	local user_set = manager.machine.screens[":screen"].container.user_settings
+        	local user_set = manager.machine.screens[machine_screen].container.user_settings        	
 		user_set.brightness = user_set_brightness + gain_set_brightness 
 	        user_set.contrast = user_set_contrast + gain_set_contrast
 	        user_set.gamma = user_set_gamma + gain_set_gamma
-	        manager.machine.screens[":screen"].container.user_settings = user_set
+	        manager.machine.screens[machine_screen].container.user_settings = user_set
 	        gain_applied = true		                       	      
         end
                
@@ -166,6 +167,12 @@ function gunlight.startplugin()
 	end
 
 	local function load_settings()	
+	        --:screen or :mainpcb:screen
+	        for i,v in pairs(manager.machine.screens) do 
+		      machine_screen = i		         	         
+		      break
+		end		
+	        --emu.print_verbose("machine_screen " .. machine_screen)	
 	        save_user_settings()
 		local loader = require('gunlight/gunlight_save')
 		if loader then
