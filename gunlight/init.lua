@@ -29,6 +29,7 @@ function gunlight.startplugin()
 	--   'type' - input type of the button being gunlightd
 	--   'key' - input_seq of the keybinding
 	--   'key_cfg' - configuration string for the keybinding
+	--   'guncode_offset' - Only apply if shoot out of screen
 	--   'brightness_gain' - increase brightness for gun button
 	--   'contrast_gain' - increase contrast for gun button
 	--   'gamma_gain' - increase gamma for gun button
@@ -78,8 +79,22 @@ function gunlight.startplugin()
 		local input = manager.machine.input						
 					
 		local function process_button(button)
-			local pressed = input:seq_pressed(button.key)			
-			if pressed then									
+			local pressed = input:seq_pressed(button.key)	
+			
+			-- check offset
+			if (pressed and button.guncode_offset == "yes") then
+				local guncode_xaxis = manager.machine.input:code_from_token("GUNCODE_1_XAXIS")	
+			 	local guncode_yaxis = manager.machine.input:code_from_token("GUNCODE_1_YAXIS")
+			 	local guncode_x = manager.machine.input:code_value(guncode_xaxis)
+	 		        local guncode_y = manager.machine.input:code_value(guncode_yaxis)
+	 		        --emu.print_verbose("guncode X ".. guncode_x)
+			        --emu.print_verbose("guncode Y ".. guncode_y)
+			        if not (guncode_x == -65536 and guncode_y == -65536) then			       
+			        	pressed = false
+			        end	
+			end				
+			
+			if pressed then							
 				button.counter = button.counter + 1																	
 				if button.method == "last" then
 					if button.off_frames > num_frames_gain then
