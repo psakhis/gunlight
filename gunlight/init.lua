@@ -20,6 +20,7 @@ local num_frames_gain = 0
 local gain_applied = false
 local lag_stack = {}
 local lag_key = {}
+local lag_offset = {}
 
 function gunlight.startplugin()
 
@@ -74,25 +75,26 @@ function gunlight.startplugin()
 	        manager.machine.screens[machine_screen].container.user_settings = user_set
 	        gain_applied = true		                       	      
         end
+        
+        local function guncode_offset()        
+        	local guncode_xaxis = manager.machine.input:code_from_token("GUNCODE_1_XAXIS")	
+		local guncode_yaxis = manager.machine.input:code_from_token("GUNCODE_1_YAXIS")
+		local guncode_x = manager.machine.input:code_value(guncode_xaxis)
+	 	local guncode_y = manager.machine.input:code_value(guncode_yaxis)
+	 	--emu.print_verbose("guncode X ".. guncode_x)
+		--emu.print_verbose("guncode Y ".. guncode_y)
+		if (guncode_x == -65536 and guncode_y == -65536) then					       
+			return 1
+		else						       
+			return 0
+		end		
+        end
                
 	local function process_frame()
 		local input = manager.machine.input						
 					
 		local function process_button(button)
-			local pressed = input:seq_pressed(button.key)	
-			
-			-- check offset
-			if (pressed and button.guncode_offset == "yes") then
-				local guncode_xaxis = manager.machine.input:code_from_token("GUNCODE_1_XAXIS")	
-			 	local guncode_yaxis = manager.machine.input:code_from_token("GUNCODE_1_YAXIS")
-			 	local guncode_x = manager.machine.input:code_value(guncode_xaxis)
-	 		        local guncode_y = manager.machine.input:code_value(guncode_yaxis)
-	 		        --emu.print_verbose("guncode X ".. guncode_x)
-			        --emu.print_verbose("guncode Y ".. guncode_y)
-			        if not (guncode_x == -65536 and guncode_y == -65536) then			       
-			        	pressed = false
-			        end	
-			end				
+			local pressed = input:seq_pressed(button.key)							
 			
 			if pressed then							
 				button.counter = button.counter + 1																	
@@ -119,10 +121,15 @@ function gunlight.startplugin()
 				-- Frames to apply button
 				if button.lag > 0 then
 				        table.insert(lag_stack,button.lag)
-				        table.insert(lag_key,button.port .. '\0' .. button.mask .. '.' .. button.type)				        
+				        table.insert(lag_key,button.port .. '\0' .. button.mask .. '.' .. button.type)	
+				        table.insert(lag_offset,button.guncode_offset)			        
 				        return 0
-				else      				        
-				        return 1
+				else      
+					if button.guncode_offset == "yes" then				        
+				        	return 9
+				        else
+				        	return 1
+				        end		
 				end        
 			else						        
 				button.counter = 0											
@@ -131,14 +138,14 @@ function gunlight.startplugin()
 		end
                                                 
 		-- Resolves conflicts between multiple gunlight keybindings for the same button.
-		local button_states = {} 		  		                          	
+		local button_states = {} 			  		                          	
                		
 		for i, button in ipairs(buttons) do
 			if button.button then			        
 				local key = button.port .. '\0' .. button.mask .. '.' .. button.type									
 				local state = button_states[key] or {0, button.button}
 				state[1] = process_button(button) | state[1]									
-				button_states[key] = state										
+				button_states[key] = state														
 			end
 		end						 			 								
 			
@@ -150,10 +157,15 @@ function gunlight.startplugin()
 		        if lag_stack[i] <= 0 then
 		                local key = lag_key[i] 
 		                local state = button_states[key]
-		                state[1] = 1
+		                if lag_offset[i] == "yes" then
+		                	state[1] = 9
+		                else
+		                	state[i] = 1
+		                end		
 		                button_states[key] = state
 		                table.remove(lag_stack,i)
 		                table.remove(lag_key,i)
+		                table.remove(lag_offset,i)
 		                --emu.print_verbose("removed " .. i)
 		        else
 		                i = i + 1        
@@ -173,9 +185,11 @@ function gunlight.startplugin()
 			num_frames_gain = num_frames_gain - 1
 		end								
 		
-		
-				
-		for i, state in pairs(button_states) do		        	        		       		       	           			           	        
+			
+		for i, state in pairs(button_states) do
+			if state[1] == 9 then
+				state[1] = guncode_offset()
+			end			        	        		       		       	           			           	        
 			state[2]:set_value(state[1])					
 		end					
 								
