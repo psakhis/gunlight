@@ -208,6 +208,12 @@ function gunlight.startplugin()
 		for i, state in pairs(button_states) do
 			if (state[1] == 2 or state[1] == 8) and not gain_applied then				
 				state[1] = 0
+			end
+			if (state[1] == 2) and gain_applied then				
+				state[1] = 1
+			end			        	        		       		       	           			           	        
+			if (state[1] == 8) and gain_applied then				
+				state[1] = 9
 			end			        	        		       		       	           			           	        
 			if state[1] == 9 then
 				state[1] = guncode_offset()
