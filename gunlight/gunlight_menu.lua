@@ -62,6 +62,7 @@ local function create_new_button()
 		off_frames = 1,
 		method = "last",
 		lag = 0,
+		only_gain = "no",
 		counter = 0
 	}
 end
@@ -181,6 +182,12 @@ local function populate_configure_menu(menu)
 	end
 	
 	table.insert(menu, {_p('plugin-gunlight', 'Frames to apply button'), current_button.lag, current_button.lag >= 0 and 'lr' or 'r'})
+	
+	if current_button.only_gain == "no" then	         
+	        table.insert(menu, {_p('plugin-gunlight', 'Only with gain'), "No",  'lr' or 'r'})
+	else
+	        table.insert(menu, {_p('plugin-gunlight', 'Only with gain'), "Yes", 'lr' or 'r'})
+	end
 	
 	configure_menu_active = true
 end
@@ -330,6 +337,19 @@ local function handle_configure_menu(index, event)
 			current_button.off_frames = 0
 			return true
 		end	
+	elseif index == 10 then
+		-- Only with gain
+		manager.machine:popmessage(_p('plugin-gunlight', 'Apply only when gain is active'))
+		if event == 'left' then
+			current_button.only_gain = "no"
+			return true
+		elseif event == 'right' then		       
+			current_button.only_gain = "yes"
+			return true
+		elseif event == 'clear' then
+			current_button.only_gain = "no"
+			return true
+		end		
 	end
 	return false
 end

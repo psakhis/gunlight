@@ -24,6 +24,7 @@ local function initialize_button(settings)
 			off_frames = settings.off_frames,
 			method = settings.method,
 			lag = settings.lag,
+			only_gain = settings.only_gain,
 			counter = 0
 		}		
 		local port = ioport.ports[settings.port]
@@ -52,7 +53,8 @@ local function serialize_settings(button_list)
 			gamma_gain = button.gamma_gain,
 			off_frames = button.off_frames,
 			method = button.method,
-			lag = button.lag
+			lag = button.lag,
+			only_gain = button.only_gain
 		}
 		table.insert(settings, setting)
 	end

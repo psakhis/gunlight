@@ -21,6 +21,7 @@ local gain_applied = false
 local lag_stack = {}
 local lag_key = {}
 local lag_offset = {}
+local only_gain = {}
 
 function gunlight.startplugin()
 
@@ -37,6 +38,7 @@ function gunlight.startplugin()
 	--   'off_frames' - frames to apply gain
 	--   'method' - until release or fixed frames gain
 	--   'lag' - frames to apply button
+	--   'only_gain' - apply only with gain active
 	--   'button' - reference to ioport_field
 	--   'counter' - position in gunlight cycle
 	local buttons = {}
@@ -123,12 +125,21 @@ function gunlight.startplugin()
 				        table.insert(lag_stack,button.lag)
 				        table.insert(lag_key,button.port .. '\0' .. button.mask .. '.' .. button.type)	
 				        table.insert(lag_offset,button.guncode_offset)			        
+				        table.insert(only_gain,button.only_gain)			        
 				        return 0
 				else      
-					if button.guncode_offset == "yes" then				        
-				        	return 9
+					if button.guncode_only_gain == "yes" then
+						if button.guncode_offset == "yes" then				        
+				        		return 8
+				        	else
+				        		return 2
+				        	end		
 				        else
-				        	return 1
+				        	if button.guncode_offset == "yes" then				        
+				        		return 9
+				        	else
+				        		return 1
+				        	end				     
 				        end		
 				end        
 			else						        
@@ -157,11 +168,19 @@ function gunlight.startplugin()
 		        if lag_stack[i] <= 0 then
 		                local key = lag_key[i] 
 		                local state = button_states[key]
-		                if lag_offset[i] == "yes" then
-		                	state[1] = 9
+		                if only_gain[i] == "yes" then		                
+		                	if lag_offset[i] == "yes" then
+		                		state[1] = 8
+		                	else
+		                		state[i] = 2
+		                	end		
 		                else
-		                	state[i] = 1
-		                end		
+		                	if lag_offset[i] == "yes" then
+		                		state[1] = 9
+		                	else
+		                		state[i] = 1
+		                	end	
+		                end	
 		                button_states[key] = state
 		                table.remove(lag_stack,i)
 		                table.remove(lag_key,i)
@@ -187,6 +206,9 @@ function gunlight.startplugin()
 		
 			
 		for i, state in pairs(button_states) do
+			if (state[1] == 2 or state[1] == 8) and not gain_applied then				
+				state[1] = 0
+			end			        	        		       		       	           			           	        
 			if state[1] == 9 then
 				state[1] = guncode_offset()
 			end			        	        		       		       	           			           	        
