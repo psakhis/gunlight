@@ -20,6 +20,7 @@ local num_frames_gain = 0
 local gain_applied = false
 local lag_stack = {}
 local lag_key = {}
+local lag_player = {}
 local lag_offset = {}
 local only_gain = {}
 
@@ -78,9 +79,17 @@ function gunlight.startplugin()
 	        gain_applied = true		                       	      
         end
         
-        local function guncode_offset()        
-        	local guncode_xaxis = manager.machine.input:code_from_token("GUNCODE_1_XAXIS")	
-		local guncode_yaxis = manager.machine.input:code_from_token("GUNCODE_1_YAXIS")
+        local function guncode_offset(state_player)        
+        	local guncode_xaxis = nil
+        	local guncode_yaxis = nil
+        	
+        	if (state_player == 8 or state_player == 9) then
+        		guncode_xaxis = manager.machine.input:code_from_token("GUNCODE_1_XAXIS")	
+			guncode_yaxis = manager.machine.input:code_from_token("GUNCODE_1_YAXIS")						
+		else
+			guncode_xaxis = manager.machine.input:code_from_token("GUNCODE_2_XAXIS")	
+			guncode_yaxis = manager.machine.input:code_from_token("GUNCODE_2_YAXIS")								
+		end		
 		local guncode_x = manager.machine.input:code_value(guncode_xaxis)
 	 	local guncode_y = manager.machine.input:code_value(guncode_yaxis)
 	 	--emu.print_verbose("guncode X ".. guncode_x)
@@ -97,6 +106,7 @@ function gunlight.startplugin()
 					
 		local function process_button(button)
 			local pressed = input:seq_pressed(button.key)							
+			local player = manager.machine.ioport.ports[button.port]:field(button.mask).player
 			
 			if pressed then							
 				button.counter = button.counter + 1																	
@@ -124,21 +134,30 @@ function gunlight.startplugin()
 				if button.lag > 0 then
 				        table.insert(lag_stack,button.lag)
 				        table.insert(lag_key,button.port .. '\0' .. button.mask .. '.' .. button.type)	
+				        table.insert(lag_player,manager.machine.ioport.ports[button.port]:field(button.mask).player)
 				        table.insert(lag_offset,button.guncode_offset)			        
 				        table.insert(only_gain,button.only_gain)			        
 				        return 0
 				else      
 					if button.guncode_only_gain == "yes" then
-						if button.guncode_offset == "yes" then				        
-				        		return 8
+						if button.guncode_offset == "yes" then
+							if player == 0 then
+				        			return 8        -- player 1 with gain and offset
+				        		else
+				        			return 10       -- player 2 with gain and offset
+				        		end		
 				        	else
-				        		return 2
+				        		return 2                -- only with gain
 				        	end		
 				        else
-				        	if button.guncode_offset == "yes" then				        
-				        		return 9
+				        	if button.guncode_offset == "yes" then	
+				        		if player == 0 then			        
+				        			return 9         -- player 1 always and offset
+				        		else
+				        			return 11        -- player 2 always and offset
+				        		end		
 				        	else
-				        		return 1
+				        		return 1                 -- always
 				        	end				     
 				        end		
 				end        
@@ -166,17 +185,25 @@ function gunlight.startplugin()
 		        lag_stack[i] = lag_stack[i] - 1
 		        --emu.print_verbose("NEW ELEMENT " .. lag_stack[i])
 		        if lag_stack[i] <= 0 then
-		                local key = lag_key[i] 
+		                local key = lag_key[i] 		               
 		                local state = button_states[key]
 		                if only_gain[i] == "yes" then		                
 		                	if lag_offset[i] == "yes" then
-		                		state[1] = 8
+		                		if lag_player[i] == 0 then
+		                			state[1] = 8
+		                		else
+		                			state[i] = 10
+		                		end		
 		                	else
 		                		state[i] = 2
 		                	end		
 		                else
 		                	if lag_offset[i] == "yes" then
-		                		state[1] = 9
+		                		if lag_player[i] == 0 then
+		                			state[1] = 9
+		                		else
+		                			state[i] = 11
+		                		end		
 		                	else
 		                		state[i] = 1
 		                	end	
@@ -184,6 +211,7 @@ function gunlight.startplugin()
 		                button_states[key] = state
 		                table.remove(lag_stack,i)
 		                table.remove(lag_key,i)
+		                table.remove(lag_player,i)
 		                table.remove(lag_offset,i)
 		                --emu.print_verbose("removed " .. i)
 		        else
@@ -206,17 +234,21 @@ function gunlight.startplugin()
 		
 			
 		for i, state in pairs(button_states) do
-			if (state[1] == 2 or state[1] == 8) and not gain_applied then				
+			-- remove press if no gain is applied
+			if (state[1] == 2 or state[1] == 8 or state[1] == 10) and not gain_applied then	 			
 				state[1] = 0
 			end
+			-- keep press if gain is applied
 			if (state[1] == 2) and gain_applied then				
 				state[1] = 1
-			end			        	        		       		       	           			           	        
-			if (state[1] == 8) and gain_applied then				
-				state[1] = 9
-			end			        	        		       		       	           			           	        
-			if state[1] == 9 then
-				state[1] = guncode_offset()
+			end			        
+			-- keep press if gain is applied and offset	        		       		       	           			           	        
+			if (state[1] == 8 or state[1] == 10) and gain_applied then				
+				state[1] = guncode_offset(state[1])
+			end	
+			-- keep press if offset		        	        		       		       	           			           	        
+			if (state[1] == 9 or state[1] == 11) then
+				state[1] = guncode_offset(state[1])
 			end			        	        		       		       	           			           	        
 			state[2]:set_value(state[1])					
 		end					
