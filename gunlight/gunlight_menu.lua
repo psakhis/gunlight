@@ -4,7 +4,7 @@ local lib = {}
 local commonui
 
 -- Set of all menus
-local MENU_TYPES = { MAIN = 0, EDIT = 1, ADD = 2, BUTTON = 3 }
+local MENU_TYPES = { MAIN = 0, EDIT = 1, ADD = 2, BUTTON = 3, BUTTON_OFFSET = 4 }
 
 -- Set of sections within a menu
 local MENU_SECTIONS = { HEADER = 0, CONTENT = 1, FOOTER = 2 }
@@ -39,8 +39,15 @@ local current_button = {}
 -- Initial button to select when opening buttons menu
 local initial_input
 
+-- Initial button to select when opening buttons offset menu
+local initial_input_offset
+
 -- Handler for BUTTON menu
 local input_menu
+
+-- Handler for BUTTON OFFSET menu
+local input_menu_offset
+
 
 -- Returns the section (from MENU_SECTIONS) and the index within that section
 local function menu_section(index)
@@ -55,20 +62,20 @@ end
 
 local function create_new_button()
 	return {
-	        guncode_offset = "no",
+		port_offset = nil,
+		mask_offset = nil,
+		type_offset = nil,	        		
+		input_delay = 0,
+		flash_length = -1,				
 		brightness_gain = 0.5,
-		contrast_gain = 0.5,
-		gamma_gain = 0.5,		
-		off_frames = 1,
-		method = "last",
-		lag = 0,
-		only_gain = "no",
+		contrast_gain = 0.0,
+		gamma_gain = 0.0,		
 		counter = 0
 	}
 end
 
 local function is_button_complete(button)
-	return button.port and button.mask and button.type and button.key and button.off_frames and button.button and button.counter 
+	return button.port and button.mask and button.type and button.key and button.button and button.counter 
 end
 
 -- Main menu
@@ -96,9 +103,13 @@ local function populate_main_menu(buttons)
 			rate = math.floor(rate * 100) / 100
 			local text
 			if button.button then
-				text = string.format(_p('plugin-gunlight', '%s [%g Hz]'), button.button.name, rate)
+				if button.button_offset then
+					text = string.format(_p('plugin-gunlight', '%s [%s]'), button.button.name .. '/' .. button.button_offset.name, "offset")
+				else
+					text = string.format(_p('plugin-gunlight', '%s'), button.button.name)
+				end	
 			else
-				text = string.format(_p('plugin-gunlight', 'n/a [%g Hz]'), rate)
+				text = string.format(_p('plugin-gunlight', 'n/a'))
 			end
 			table.insert(menu, {text, input:seq_name(button.key), ''})
 			if index == initial_button then
@@ -150,6 +161,7 @@ end
 
 local function populate_configure_menu(menu)
 	local button_name
+	
 	if current_button.button then
 		button_name = current_button.button.name
 	elseif current_button.port then
@@ -157,37 +169,32 @@ local function populate_configure_menu(menu)
 	else
 		button_name = _p('plugin-gunlight', '[not set]')
 	end
-	local key_name = current_button.key and manager.machine.input:seq_name(current_button.key) or _p('plugin-gunlight', '[not set]')
-	table.insert(menu, {_p('plugin-gunlight', 'Input'), button_name, ''})
+	
+	table.insert(menu, {_p('plugin-gunlight', 'Action'), button_name, ''})
 	if not (configure_menu_active or configure_selection_save) then
 		configure_selection_save = #menu
 	end
-	table.insert(menu, {_p('plugin-gunlight', 'Gun button'), key_name, hotkey_poller and 'lr' or ''})
 	
-	if current_button.guncode_offset == "no" then	         
-	        table.insert(menu, {_p('plugin-gunlight', 'Guncode off-screen'), "No",  'lr' or 'r'})
+	local button_name_offset
+	if current_button.button_offset then
+		button_name_offset = current_button.button_offset.name
+	elseif current_button.port_offset then
+		button_name_offset = _p('plugin-gunlight', 'n/a')
 	else
-	        table.insert(menu, {_p('plugin-gunlight', 'Guncode off-screen'), "Yes", 'lr' or 'r'})
+		button_name_offset = _p('plugin-gunlight', '[not set]')
 	end
+	
+	table.insert(menu, {_p('plugin-gunlight', 'Offscreen Action'), button_name_offset, ''})
+	
+	local key_name = current_button.key and manager.machine.input:seq_name(current_button.key) or _p('plugin-gunlight', '[not set]')
+	table.insert(menu, {_p('plugin-gunlight', 'Input'), key_name, hotkey_poller and 'lr' or ''})
 		
-	table.insert(menu, {_p('plugin-gunlight', 'Brightness gain'), current_button.brightness_gain, current_button.brightness_gain > 0 and 'lr' or 'r'})
-	table.insert(menu, {_p('plugin-gunlight', 'Contrast gain'), current_button.contrast_gain, current_button.contrast_gain > 0 and 'lr' or 'r'})
-	table.insert(menu, {_p('plugin-gunlight', 'Gamma gain'), current_button.gamma_gain, current_button.gamma_gain > 0 and 'lr' or 'r'})
-	table.insert(menu, {_p('plugin-gunlight', 'Frames to apply gain'), current_button.off_frames, current_button.off_frames > 1 and 'lr' or 'r'})
-	
-	if current_button.method == "last" then	         
-	        table.insert(menu, {_p('plugin-gunlight', 'Gain method'), "Until release",  'lr' or 'r'})
-	else
-	        table.insert(menu, {_p('plugin-gunlight', 'Gain method'), "Fixed frames", 'lr' or 'r'})
-	end
-	
-	table.insert(menu, {_p('plugin-gunlight', 'Frames to apply button'), current_button.lag, current_button.lag >= 0 and 'lr' or 'r'})
-	
-	if current_button.only_gain == "no" then	         
-	        table.insert(menu, {_p('plugin-gunlight', 'Only with gain'), "No",  'lr' or 'r'})
-	else
-	        table.insert(menu, {_p('plugin-gunlight', 'Only with gain'), "Yes", 'lr' or 'r'})
-	end
+	table.insert(menu, {_p('plugin-gunlight', 'Input Delay'), current_button.input_delay, current_button.input_delay > 0 and 'lr' or 'r'})
+	table.insert(menu, {_p('plugin-gunlight', 'Flash Length'), current_button.flash_length, current_button.flash_length > -1 and 'lr' or 'r'})		
+		
+	table.insert(menu, {_p('plugin-gunlight', 'Flash Brightness'), current_button.brightness_gain, current_button.brightness_gain > 0 and 'lr' or 'r'})
+	table.insert(menu, {_p('plugin-gunlight', 'Flash Contrast'), current_button.contrast_gain, current_button.contrast_gain > 0 and 'lr' or 'r'})
+	table.insert(menu, {_p('plugin-gunlight', 'Flash Gamma'), current_button.gamma_gain, current_button.gamma_gain > 0 and 'lr' or 'r'})	
 	
 	configure_menu_active = true
 end
@@ -207,7 +214,7 @@ local function handle_configure_menu(index, event)
 	end
 
 	if index == 1 then
-		-- Input
+		-- Action
 		if event == 'select' then
 			configure_selection_save = header_height + index
 			table.insert(menu_stack, MENU_TYPES.BUTTON)
@@ -217,6 +224,16 @@ local function handle_configure_menu(index, event)
 			return true
 		end
 	elseif index == 2 then
+		--  Offscreen Action
+		if event == 'select' then
+			configure_selection_save = header_height + index
+			table.insert(menu_stack, MENU_TYPES.BUTTON_OFFSET)
+			if current_button.port_offset and current_button.button_offset then
+				initial_input_offset = current_button.button_offset
+			end
+			return true
+		end
+	elseif index == 3 then
 		-- Hotkey
 		if event == 'select' then
 			if not commonui then
@@ -224,21 +241,37 @@ local function handle_configure_menu(index, event)
 			end
 			hotkey_poller = commonui.switch_polling_helper()
 			return true
-		end
-	elseif index == 3 then
-		-- Guncode offset 
-		manager.machine:popmessage(_p('plugin-gunlight', 'Apply only if shoot out off screen'))
+		end			
+	elseif index == 4 then
+		-- Input delay
+		manager.machine:popmessage(_p('plugin-gunlight', 'Input Delay'))
 		if event == 'left' then
-			current_button.guncode_offset = "no"
+			current_button.input_delay = current_button.input_delay - 1			
 			return true
-		elseif event == 'right' then		       
-			current_button.guncode_offset = "yes"
+		elseif event == 'right' then
+			current_button.input_delay = current_button.input_delay + 1
 			return true
 		elseif event == 'clear' then
-			current_button.guncode_offset = "no"
+			current_button.input_delay = 1
 			return true
-		end		
-	elseif index == 4 then
+		end
+	elseif index == 5 then
+		-- Flash length
+		manager.machine:popmessage(_p('plugin-gunlight', 'Flash Length (set -1 for until release)'))
+		if event == 'left' then
+			current_button.flash_length = current_button.flash_length - 1
+			if current_button.flash_length < -1 then
+			 current_button.flash_length = -1
+			end 
+			return true
+		elseif event == 'right' then
+			current_button.flash_length = current_button.flash_length + 1
+			return true
+		elseif event == 'clear' then
+			current_button.flash_length = 1
+			return true
+		end			
+	elseif index == 6 then
 		-- Brightness gain
 		manager.machine:popmessage(_p('plugin-gunlight', 'Brightness gain for gun button'))
 		if event == 'left' then
@@ -257,7 +290,7 @@ local function handle_configure_menu(index, event)
 			current_button.brightness_gain = 0.5
 			return true
 		end
-	elseif index == 5 then
+	elseif index == 7 then
 		-- Contrast gain
 		manager.machine:popmessage(_p('plugin-gunlight', 'Contrast gain for gun button'))
 		if event == 'left' then
@@ -276,7 +309,7 @@ local function handle_configure_menu(index, event)
 			current_button.contrast_gain = 0.5
 			return true
 		end	
-	elseif index == 6 then
+	elseif index == 8 then
 		-- Gamma gain
 		manager.machine:popmessage(_p('plugin-gunlight', 'Gamma gain for gun button'))
 		if event == 'left' then
@@ -294,62 +327,7 @@ local function handle_configure_menu(index, event)
 		elseif event == 'clear' then
 			current_button.gamma_gain = 0.5
 			return true
-		end		
-	elseif index == 7 then
-		-- Off frames
-		manager.machine:popmessage(_p('plugin-gunlight', 'Frames to apply gain'))
-		if event == 'left' then
-			current_button.off_frames = current_button.off_frames - 1
-			return true
-		elseif event == 'right' then
-			current_button.off_frames = current_button.off_frames + 1
-			return true
-		elseif event == 'clear' then
-			current_button.off_frames = 1
-			return true
-		end
-	elseif index == 8 then
-		-- Method
-		manager.machine:popmessage(_p('plugin-gunlight', 'Gain apply method'))
-		if event == 'left' then
-			current_button.method = "last"
-			return true
-		elseif event == 'right' then
-			current_button.method = "first"
-			return true
-		elseif event == 'clear' then
-			current_button.method = "first"
-			return true
-		end	
-	elseif index == 9 then
-		-- Lag frames
-		manager.machine:popmessage(_p('plugin-gunlight', 'Frames to apply button'))
-		if event == 'left' then
-			current_button.lag = current_button.lag - 1
-			if current_button.lag < 0 then
-			 current_button.lag = 0
-			end 
-			return true
-		elseif event == 'right' then
-			current_button.lag = current_button.lag + 1
-			return true
-		elseif event == 'clear' then
-			current_button.off_frames = 0
-			return true
-		end	
-	elseif index == 10 then
-		-- Only with gain
-		manager.machine:popmessage(_p('plugin-gunlight', 'Apply only when gain is active'))
-		if event == 'left' then
-			current_button.only_gain = "no"
-			return true
-		elseif event == 'right' then		       
-			current_button.only_gain = "yes"
-			return true
-		elseif event == 'clear' then
-			current_button.only_gain = "no"
-			return true
-		end		
+		end				
 	end
 	return false
 end
@@ -438,10 +416,10 @@ local function populate_button_menu()
 
 	local function action(field)
 		if field then
-			current_button.port = field.port.tag
+			current_button.port = field.port.tag						
 			current_button.mask = field.mask
 			current_button.type = field.type
-			current_button.button = field
+			current_button.button = field			
 		end
 		initial_input = nil
 		input_menu = nil
@@ -451,12 +429,43 @@ local function populate_button_menu()
 	if not commonui then
 		commonui = require('commonui')
 	end
-	input_menu = commonui.input_selection_menu(action, _p('plugin-gunlight', 'Select an input for gunlight'), is_supported_input)
+	input_menu = commonui.input_selection_menu(action, _p('plugin-gunlight', 'Select an Action'), is_supported_input)
 	return input_menu:populate(initial_input)
+end
+
+-- Button offset selection menu
+
+local function populate_button_offset_menu()
+	local function is_supported_input_offset(ioport_field)
+		-- IPT_BUTTON1 through IPT_BUTTON16 in ioport_type enum (ioport.h)
+		return ioport_field.type >= 64 and ioport_field.type <= 79
+	end
+
+	local function action_offset(field)
+		if field then
+			current_button.port_offset = field.port.tag						
+			current_button.mask_offset = field.mask
+			current_button.type_offset = field.type
+			current_button.button_offset = field			
+		end
+		initial_input_offset = nil
+		input_menu_offset = nil
+		table.remove(menu_stack)
+	end
+
+	if not commonui then
+		commonui = require('commonui')
+	end
+	input_menu_offset = commonui.input_selection_menu(action_offset, _p('plugin-gunlight', 'Select an Offset Action'), is_supported_input_offset)
+	return input_menu_offset:populate(initial_input_offset)
 end
 
 local function handle_button_menu(index, event)
 	return input_menu:handle(index, event)
+end
+
+local function handle_button_offset_menu(index, event)
+	return input_menu_offset:handle(index, event)
 end
 
 function lib:init_menu(buttons)
@@ -465,6 +474,7 @@ function lib:init_menu(buttons)
 	menu_stack = { MENU_TYPES.MAIN }
 	current_button = {}
 	input_menu = nil
+	input_menu_offset = nil
 end
 
 function lib:populate_menu(buttons)
@@ -477,6 +487,8 @@ function lib:populate_menu(buttons)
 		return populate_add_menu()
 	elseif current_menu == MENU_TYPES.BUTTON then
 		return populate_button_menu()
+	elseif current_menu == MENU_TYPES.BUTTON_OFFSET then
+		return populate_button_offset_menu()	
 	end
 end
 
@@ -491,6 +503,8 @@ function lib:handle_menu_event(index, event, buttons)
 		return handle_add_menu(index, event, buttons)
 	elseif current_menu == MENU_TYPES.BUTTON then
 		return handle_button_menu(index, event)
+	elseif current_menu == MENU_TYPES.BUTTON_OFFSET then
+		return handle_button_offset_menu(index, event)	
 	end
 end
 
