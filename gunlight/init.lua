@@ -95,7 +95,7 @@ function gunlight.startplugin()
 	 	local guncode_y = manager.machine.input:code_value(guncode_yaxis)		 	
 		--emu.print_verbose("guncode X " .. guncode_x)
 		--emu.print_verbose("guncode Y " .. guncode_y)
-		if (guncode_x == -65536 and guncode_y == -65536) then					       		
+		if (guncode_x == -65536 and guncode_y == -65536) then					       				
 			return 1
 		else						       
 			return 0
@@ -152,7 +152,7 @@ function gunlight.startplugin()
 			end
 		end						 			 								
 		
-		-- Apply flash gain
+		-- Apply flash gain		
 		if num_frames_gain <= 0 then
 			if gain_applied then
 				restore_user_settings()
@@ -173,7 +173,11 @@ function gunlight.startplugin()
 			if lag_stack[i] <= 0 then
 				local key = lag_key[i] 		               
 		                local state = button_states[key]
-		                state[1] = 1
+		                if gain_applied then		                	
+		             		state[1] = 1
+		             	else
+		             		state[1] = 0
+		             	end		
 		                button_states[key] = state
 		                table.remove(lag_stack,i)
 		                table.remove(lag_key,i)	
@@ -185,6 +189,7 @@ function gunlight.startplugin()
 			
 		for i, state in pairs(button_states) do						
 			if state[2].button_offset then
+				emu.print_verbose("state " .. state[1])
 				local offset = guncode_offset(state[2].key_cfg)
 				if offset == 1 then
 					state[2].button_offset:set_value(state[1])
