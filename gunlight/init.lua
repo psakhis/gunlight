@@ -117,8 +117,11 @@ function gunlight.startplugin()
 						num_frames_gain = 1 
 					end	
 				else
-					if button.counter == 1 and not gain_applied then
-						num_frames_gain = button.flash_length 
+					--if button.counter == 1 and not gain_applied then
+					if button.counter == 1 then
+						if num_frames_gain < button.flash_length then
+							num_frames_gain = button.flash_length 
+						end							
 					end							
 				end		
 																																													   				
@@ -152,7 +155,8 @@ function gunlight.startplugin()
 			end
 		end						 			 								
 		
-		-- Apply flash gain		
+		-- Apply flash gain	
+		--emu.print_verbose("gain " .. num_frames_gain)	
 		if num_frames_gain <= 0 then
 			if gain_applied then
 				restore_user_settings()
@@ -189,7 +193,7 @@ function gunlight.startplugin()
 			
 		for i, state in pairs(button_states) do						
 			if state[2].button_offset then
-				emu.print_verbose("state " .. state[1])
+				--emu.print_verbose("button " .. state[2].key_cfg .. " state " .. state[1])
 				local offset = guncode_offset(state[2].key_cfg)
 				if offset == 1 then
 					state[2].button_offset:set_value(state[1])
