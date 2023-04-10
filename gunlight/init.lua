@@ -7,6 +7,8 @@ local exports = {
 	license = 'BSD-3-Clause',
 	author = { name = 'Jack Li / Psakhis' } }
 
+table.maxn = table.maxn or function(t) return #t end
+
 local gunlight = exports
 
 local machine_screen = nil
